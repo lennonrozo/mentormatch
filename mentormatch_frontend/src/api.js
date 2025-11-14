@@ -1,99 +1,36 @@
-// Static mock API client for GitHub Pages demo (no live backend).
-// Each method returns a Promise that resolves to an object that loosely mimics
-// Axios response shape ({ data }). Adjust the mock data as desired.
+// api.js - Centralized Axios API client factory for connecting to the Django backend
+// This file exports two things:
+// 1) API_BASE: The base URL for all backend requests
+// 2) apiClient(token): A function that creates an Axios instance with authentication
 
-// Mock in-memory data (very lightweight). Real persistence is NOT supported.
-const mockState = {
-  currentUser: {
-    id: 1,
-    username: 'demo_user',
-    bio: 'Static demo profile. Backend disabled.',
-    skills_offered: ['JavaScript', 'React'],
-    skills_needed: ['Django'],
-  },
-  matches: [
-    { id: 101, user1: { username: 'demo_user' }, user2: { username: 'mentor_alex' } },
-    { id: 102, user1: { username: 'demo_user' }, user2: { username: 'learner_sam' } },
-  ],
-  messages: {
-    101: [
-      { id: 1, sender: 'mentor_alex', content: 'Welcome to the static demo!', timestamp: new Date().toISOString() },
-    ],
-    102: [
-      { id: 2, sender: 'learner_sam', content: 'This would be a conversation.', timestamp: new Date().toISOString() },
-    ],
-  },
-};
+import axios from 'axios'
 
-function delay(ms = 250) { return new Promise(r => setTimeout(r, ms)); }
+// Base URL for the Django backend API
+// In production, you might replace this with an environment variable
+export const API_BASE = 'http://127.0.0.1:8000'
 
-function clone(v){ return JSON.parse(JSON.stringify(v)); }
-
-async function get(path){
-  await delay();
-  if(path === 'profile/me/' || path === 'profile/' ) return { data: clone(mockState.currentUser) };
-  if(path === 'matches/') return { data: clone(mockState.matches) };
-  // User detail
-  const userDetail = path.match(/^users\/(\d+)\/$/);
-  if(userDetail){
-    // For static demo we only ever return currentUser for any id
-    return { data: clone(mockState.currentUser) };
-  }
-  // Messages: /matches/:id/messages/
-  const matchMsg = path.match(/^matches\/(\d+)\/messages\/$/);
-  if(matchMsg){
-    const id = matchMsg[1];
-    return { data: clone(mockState.messages[id] || []) };
-  }
-  // Potential swipe demo (empty)
-  if(path === 'potential-matches/') return { data: [] };
-  // Media listing
-  const mediaList = path.match(/^media\/(\d+)\/$/);
-  if(mediaList){ return { data: [] }; }
-  return { data: null };
+/**
+ * Creates and returns an Axios instance configured to communicate with the backend.
+ * 
+ * @param {string} token - The JWT access token for authenticating API requests
+ * @returns {AxiosInstance} - A configured Axios instance
+ * 
+ * How it works:
+ * - Sets the base URL to our Django backend
+ * - Adds an Authorization header with the Bearer token for authentication
+ * - Makes it easy to call API endpoints like: api.get('/profile/me/')
+ */
+export function apiClient(token) {
+  return axios.create({
+    baseURL: `${API_BASE}/api/`,  // All requests will be prefixed with this
+    headers: {
+      // JWT token format: "Bearer <token>"
+      // The backend checks this header to authenticate the user
+      Authorization: `Bearer ${token}`
+    }
+  })
 }
 
-async function post(path, payload){
-  await delay();
-  // Simulate login success
-  if(path === 'token/'){ return { data: { access: 'STATIC_ACCESS', refresh: 'STATIC_REFRESH' } }; }
-  // Simulate signup
-  if(path === 'users/'){ return { data: { id: 999, username: payload.username } }; }
-  // Messages
-  const msgMatch = path.match(/^matches\/(\d+)\/messages\/$/);
-  if(msgMatch){
-    const matchId = msgMatch[1];
-    const newMsg = {
-      id: Date.now(),
-      sender: mockState.currentUser.username,
-      content: payload.content,
-      timestamp: new Date().toISOString(),
-    };
-    mockState.messages[matchId] = mockState.messages[matchId] || [];
-    mockState.messages[matchId].push(newMsg);
-    return { data: newMsg };
-  }
-  return { data: payload };
-}
-
-async function put(path, payload){
-  await delay();
-  if(path === 'profile/me/' || path === 'profile/update/' || path === 'profile/' ){
-    Object.assign(mockState.currentUser, payload);
-    return { data: clone(mockState.currentUser) };
-  }
-  return { data: payload };
-}
-
-async function _delete(path){
-  await delay();
-  return { data: null };
-}
-
-// The exported factory maintains previous signature but ignores token.
-export function apiClient(){
-  const patch = put; // alias for convenience
-  return { get, post, put, patch, delete: _delete };
-}
-
-export default apiClient;
+// Export apiClient as the default export for convenience
+// This allows: import api from './api' OR import { apiClient } from './api'
+export default apiClient

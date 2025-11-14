@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { apiClient } from '../api'
+import { apiClient, API_BASE } from '../api'
 import { logApiError, extractFieldErrors } from '../utils/errors'
 import { getActiveAccessToken } from '../utils/sessions'
 import { FiLogOut } from 'react-icons/fi'
@@ -124,9 +124,23 @@ export default function MyProfile(){
 
       <hr style={{margin:'32px 0', border:'none', borderTop:'1px solid #e5e7eb'}} />
       <h3 style={{marginTop:0, marginBottom:'20px', fontSize:'20px', fontWeight:'600'}}>My Media</h3>
-      <div className="media-grid" style={{marginTop:'8px'}}>
-        <p style={{opacity:0.8}}>Media uploads are disabled in static demo mode.</p>
+      <div className="media-grid">
+        {media.map(m=> (
+          <a href={`${API_BASE}${m.file}`} key={m.id} target="_blank" rel="noreferrer">
+            {m.media_type==='image' ? <img src={`${API_BASE}${m.file}`} alt={m.caption||''} /> : <video src={`${API_BASE}${m.file}`} controls />}
+          </a>
+        ))}
       </div>
+      <form onSubmit={upload} style={{display:'flex', flexDirection:'column', alignItems:'flex-start', gap:12, marginTop:'20px'}}>
+        <input type="file" accept="image/*,video/*" onChange={e=>{
+          const f = e.target.files[0];
+          if(!f) return setNewMedia(null);
+          // simple client-side size guard (server also validates)
+          if(f.size > 10*1024*1024){ alert('Max file size is 10MB'); e.target.value=''; return; }
+          setNewMedia(f)
+        }} />
+        <button className="btn" type="submit" disabled={!newMedia}>Upload</button>
+      </form>
     </div>
   )
 }

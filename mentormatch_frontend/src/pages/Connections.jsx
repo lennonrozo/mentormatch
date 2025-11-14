@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useMemo} from 'react'
+import React, {useEffect, useState, useRef} from 'react'
 import { apiClient } from '../api'
 import { getActiveAccessToken, getActiveUsername } from '../utils/sessions'
 import { Link } from 'react-router-dom'
@@ -69,40 +69,6 @@ export default function Connections(){
     }catch(err){console.error(err)}
   }
 
-  // Group messages by calendar date for display with date separators
-  const grouped = useMemo(()=>{
-    if(!messages.length) return []
-    const groups = []
-    let currentKey = null
-    let currentList = []
-    for(const msg of messages){
-      const d = new Date(msg.timestamp)
-      const key = d.toISOString().slice(0,10) // YYYY-MM-DD
-      if(key !== currentKey){
-        if(currentList.length) groups.push({date: currentKey, items: currentList})
-        currentKey = key
-        currentList = [msg]
-      } else {
-        currentList.push(msg)
-      }
-    }
-    if(currentList.length) groups.push({date: currentKey, items: currentList})
-    return groups
-  }, [messages])
-
-  const formatDateHeader = key => {
-    if(!key) return ''
-    const today = new Date()
-    const todayKey = today.toISOString().slice(0,10)
-    const yesterday = new Date(Date.now() - 86400000)
-    const yesterdayKey = yesterday.toISOString().slice(0,10)
-    if(key === todayKey) return 'Today'
-    if(key === yesterdayKey) return 'Yesterday'
-    const parts = key.split('-')
-    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-    return d.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'})
-  }
-
   return (
     <div style={{display:'grid', gridTemplateColumns:'320px 1fr', gap:12}}>
       <div className="card">
@@ -138,17 +104,46 @@ export default function Connections(){
               </div>
             )}
             <div className="messages" ref={listRef}>
-              {grouped.map(group => (
-                <div key={group.date} style={{marginBottom:16}}>
-                  <div style={{textAlign:'center', fontSize:12, fontWeight:600, color:'#555', margin:'12px 0'}}>{formatDateHeader(group.date)}</div>
-                  {group.items.map(msg => (
-                    <div key={msg.id} className={`message ${msg.sender.username === (getActiveUsername() || localStorage.getItem('username')||'') ? 'self' : 'other'}`}>
-                      <div style={{fontSize:12, color:'#555'}}><strong>{msg.sender.username}</strong> • {new Date(msg.timestamp).toLocaleTimeString()}</div>
-                      <div>{msg.content}</div>
+              {messages.reduce((acc, msg, idx) => {
+                const msgDate = new Date(msg.timestamp)
+                const msgDateStr = msgDate.toLocaleDateString()
+                const prevDate = idx > 0 ? new Date(messages[idx-1].timestamp).toLocaleDateString() : null
+                // Insert date divider if this is first message or date changed
+                if (msgDateStr !== prevDate) {
+                  // Determine label: Today, Yesterday, or MM/DD/YYYY
+                  const now = new Date()
+                  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                  const yesterday = new Date(today)
+                  yesterday.setDate(yesterday.getDate() - 1)
+                  const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate())
+                  
+                  let dateLabel = msgDateStr
+                  if (msgDay.getTime() === today.getTime()) {
+                    dateLabel = 'Today'
+                  } else if (msgDay.getTime() === yesterday.getTime()) {
+                    dateLabel = 'Yesterday'
+                  } else {
+                    // Format as MM/DD/YYYY
+                    const month = String(msgDate.getMonth() + 1).padStart(2, '0')
+                    const day = String(msgDate.getDate()).padStart(2, '0')
+                    const year = msgDate.getFullYear()
+                    dateLabel = `${month}/${day}/${year}`
+                  }
+                  
+                  acc.push(
+                    <div key={`date-${msg.id}`} style={{textAlign:'center', margin:'16px 0 8px', fontSize:13, color:'#888', fontWeight:'500'}}>
+                      {dateLabel}
                     </div>
-                  ))}
-                </div>
-              ))}
+                  )
+                }
+                acc.push(
+                  <div key={msg.id} className={`message ${msg.sender.username === (getActiveUsername() || localStorage.getItem('username')||'') ? 'self' : 'other'}`}>
+                    <div style={{fontSize:12, color:'#555'}}><strong>{msg.sender.username}</strong> • {new Date(msg.timestamp).toLocaleTimeString()}</div>
+                    <div>{msg.content}</div>
+                  </div>
+                )
+                return acc
+              }, [])}
             </div>
             <form onSubmit={send} style={{marginTop:12, display:'flex', gap:8}}>
               <input value={text} onChange={e=>setText(e.target.value)} placeholder='Write a message...' style={{flex:1, padding:8, borderRadius:8}} />

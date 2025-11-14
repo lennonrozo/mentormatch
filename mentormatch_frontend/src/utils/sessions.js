@@ -1,3 +1,7 @@
+// Simple multi-session helper so multiple users can be logged-in in different tabs
+// without stepping on each other. Each tab stores an active session id in
+// sessionStorage; all sessions are persisted in localStorage.
+
 const SESSIONS_KEY = 'mm_sessions_v1'
 const ACTIVE_SESSION_ID_KEY = 'mm_active_session_id'
 
