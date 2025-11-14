@@ -31,8 +31,14 @@ function clone(v){ return JSON.parse(JSON.stringify(v)); }
 
 async function get(path){
   await delay();
-  if(path === 'profile/me/') return { data: clone(mockState.currentUser) };
+  if(path === 'profile/me/' || path === 'profile/' ) return { data: clone(mockState.currentUser) };
   if(path === 'matches/') return { data: clone(mockState.matches) };
+  // User detail
+  const userDetail = path.match(/^users\/(\d+)\/$/);
+  if(userDetail){
+    // For static demo we only ever return currentUser for any id
+    return { data: clone(mockState.currentUser) };
+  }
   // Messages: /matches/:id/messages/
   const matchMsg = path.match(/^matches\/(\d+)\/messages\/$/);
   if(matchMsg){
@@ -41,6 +47,9 @@ async function get(path){
   }
   // Potential swipe demo (empty)
   if(path === 'potential-matches/') return { data: [] };
+  // Media listing
+  const mediaList = path.match(/^media\/(\d+)\/$/);
+  if(mediaList){ return { data: [] }; }
   return { data: null };
 }
 
@@ -69,7 +78,10 @@ async function post(path, payload){
 
 async function put(path, payload){
   await delay();
-  if(path === 'profile/me/'){ Object.assign(mockState.currentUser, payload); return { data: clone(mockState.currentUser) }; }
+  if(path === 'profile/me/' || path === 'profile/update/' || path === 'profile/' ){
+    Object.assign(mockState.currentUser, payload);
+    return { data: clone(mockState.currentUser) };
+  }
   return { data: payload };
 }
 
@@ -80,7 +92,8 @@ async function _delete(path){
 
 // The exported factory maintains previous signature but ignores token.
 export function apiClient(){
-  return { get, post, put, delete: _delete };
+  const patch = put; // alias for convenience
+  return { get, post, put, patch, delete: _delete };
 }
 
 export default apiClient;

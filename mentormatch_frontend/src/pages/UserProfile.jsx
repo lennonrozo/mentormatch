@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { apiClient, API_BASE } from '../api'
+import { apiClient } from '../api'
 import { getActiveAccessToken } from '../utils/sessions'
 
 export default function UserProfile(){
@@ -54,16 +54,7 @@ export default function UserProfile(){
         </div>
         <div>
           <h3>Media</h3>
-          {media.length===0 ? <p>Visible after you match with this user.</p> : (
-            <div className="media-grid">
-              {media.map(m=> (
-                <a href={`${API_BASE}${m.file}`} key={m.id} target="_blank" rel="noreferrer">
-                  {m.media_type==='image' ? <img src={`${API_BASE}${m.file}`} alt={m.caption||''} /> :
-                    <video src={`${API_BASE}${m.file}`} controls style={{width:'100%'}} />}
-                </a>
-              ))}
-            </div>
-          )}
+          <p style={{opacity:0.8}}>Media is unavailable in static demo mode.</p>
         </div>
       </div>
     </div>
